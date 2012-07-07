@@ -10,7 +10,7 @@ typedef struct{
   double im;
 } complex;
 
-static inline complex add(complex m, complex n)
+complex add(complex m, complex n)
 {
   complex out;
   out.re = m.re + n.re;
@@ -18,7 +18,7 @@ static inline complex add(complex m, complex n)
   return out;
 }
 
-static inline complex cdiff(complex m, complex n)
+complex cdiff(complex m, complex n)
 {
   complex out;
   out.re = m.re - n.re;
@@ -26,7 +26,7 @@ static inline complex cdiff(complex m, complex n)
   return out;
 }
 
-static inline complex mult(complex m, complex n)
+complex mult(complex m, complex n)
 {
   complex out;
   out.re = m.re*n.re - m.im *n.im;
@@ -34,7 +34,7 @@ static inline complex mult(complex m, complex n)
   return out;
 }
 
-static inline complex rmult(double u, complex m)
+complex rmult(double u, complex m)
 {
   complex out;
   out.re = u*m.re;
@@ -42,7 +42,7 @@ static inline complex rmult(double u, complex m)
   return out;
 }
 
-static inline complex jcon(complex m)
+complex jcon(complex m)
 {
   complex out;
   out.re = m.re;
@@ -50,7 +50,7 @@ static inline complex jcon(complex m)
   return out;
 }
 
-static inline double norm2(complex m)
+double norm2(complex m)
 {
   double out;
   out = (m.re*m.re + m.im*m.im);
@@ -58,14 +58,14 @@ static inline double norm2(complex m)
 }
 
 
-static inline complex recip(complex m)
+complex recip(complex m)
 {
   complex out;
   out = rmult(1/norm2(m),jcon(m));
   return out;
 }
 
-static inline complex cdiv(complex m, complex v)
+complex cdiv(complex m, complex v)
 {
   complex out;
   out = mult(m,recip(v));
@@ -90,7 +90,7 @@ static inline complex cdiv(complex m, complex v)
    to make no difference to the phase of the complex number being
    plotted */
 
-static inline complex expc(complex m)
+complex expc(complex m)
 {
   complex out;
   complex mesp, frim;
@@ -102,7 +102,7 @@ static inline complex expc(complex m)
 }
 
 
-static inline complex powc(complex ag, complex bg)
+complex powc(complex ag, complex bg)
 {  
   complex out;
   complex mesp, frim;
@@ -197,14 +197,16 @@ color argcolor(complex q)
 static const complex origin = { 0.0, 0.0 };
 static const complex ai = { 0.0, 1.0 };
 
-complex jtheta3(complex z, complex q)
+complex iter(complex z, complex q)
 {
   complex out;
   complex ponent;
   complex qpart;
   complex zpart;
   complex sum;
-  sum = origin;
+  complex psum;
+  complex blorf;
+  sum = psum = origin;
   int n;
   for(n=-40;n<40;n++)
     {
@@ -214,39 +216,16 @@ complex jtheta3(complex z, complex q)
       zpart = expc(z);
       zpart = powc(zpart, rmult(2*n,ai));
       sum = add(sum,mult(qpart,zpart));
-    }
-  return sum;
-}
-
-
-/* we have to do this again, because there's a term
-   of 2ni for each factor of the theta function, so we
-   can't just have a switch for it in the first one */
-
-complex pjtheta3(complex z, complex q)
-{
-  complex out;
-  complex ponent;
-  complex qpart;
-  complex zpart;
-  complex sum;
-  complex blorf;
-  sum = origin;
-  int n;
-  for(n=-40;n<40;n++)
-    {
-      ponent.re = n*n;
-      ponent.im = 0.0;
-      qpart = powc(q,ponent);
-      zpart = expc(z);
       /* the next line explicitly calculates the derivative */
       blorf = rmult(2*n,ai);
-      zpart = powc(zpart, rmult(2*n,ai));
       zpart = mult(blorf,zpart);
-      sum = add(sum,mult(qpart,zpart));
+      psum = add(psum,mult(qpart,zpart));
     }
-  return sum;
+  return cdiv(sum, psum);
 }
+
+
+
 
 /* here's the actual newton method def -- I"m going to be using
    thirty iterations at the moment, because that seems to get fine
@@ -261,7 +240,7 @@ complex newt(complex z, complex q)
   current = z;
   for(ix = 0; ix < 30 ; ix++)
     {
-      next = cdiff(current,cdiv(jtheta3(current,q),pjtheta3(current,q)));
+      next = cdiff(current,iter(current,q));
       current = next;
     }
   return current;
