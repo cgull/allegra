@@ -197,36 +197,6 @@ color argcolor(complex q)
 static const complex origin = { 0.0, 0.0 };
 static const complex ai = { 0.0, 1.0 };
 
-complex iter(complex z, complex q)
-{
-  complex out;
-  complex ponent;
-  complex qpart;
-  complex zpart;
-  complex sum;
-  complex psum;
-  complex blorf;
-  sum = psum = origin;
-  int n;
-  for(n=-40;n<40;n++)
-    {
-      ponent.re = n*n;
-      ponent.im = 0.0;
-      qpart = powc(q,ponent);
-      zpart = expc(z);
-      zpart = powc(zpart, rmult(2*n,ai));
-      sum = add(sum,mult(qpart,zpart));
-      /* the next line explicitly calculates the derivative */
-      blorf = rmult(2*n,ai);
-      zpart = mult(blorf,zpart);
-      psum = add(psum,mult(qpart,zpart));
-    }
-  return cdiv(sum, psum);
-}
-
-
-
-
 /* here's the actual newton method def -- I"m going to be using
    thirty iterations at the moment, because that seems to get fine
    results with mpmath */
@@ -236,20 +206,44 @@ complex newt(complex z, complex q)
   int ix; 
   /* these don't really need to be defined as global variables, so
      I'll define them locally */
-  complex current, next;
-  current = z;
+  complex next;
+  next = z;
+
+  complex qpart[80];
+  complex blorf[80];
+  int n;
+  for (n = -40; n < 40; n++) {
+    complex ponent;
+    ponent.re = n*n;
+    ponent.im = 0.0;
+    qpart[n+40] = powc(q,ponent);
+    blorf[n+40] = rmult(2*n,ai);
+  }
+
   for(ix = 0; ix < 30 ; ix++)
     {
-      next = cdiff(current,iter(current,q));
-      current = next;
+      complex zpart;
+      complex sum;
+      complex psum;
+      sum = psum = origin;
+      zpart = expc(next);
+      int n;
+      for(n=-40;n<40;n++)
+	{
+	  zpart = powc(zpart, blorf[n+40]);
+	  sum = add(sum,mult(qpart[n+40],zpart));
+	  zpart = mult(blorf[n+40],zpart);
+	  psum = add(psum,mult(qpart[n+40],zpart));
+	}
+      next = cdiff(next,cdiv(sum, psum));
     }
-  return current;
+  return next;
 }
 
 int main(int argc, char *argv[])
 {
 
-  static const int displaysize = 40;
+  static const int displaysize = 512;
 
 
   color display[displaysize][displaysize];
