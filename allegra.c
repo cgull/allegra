@@ -122,10 +122,10 @@ static cx powc(cx ag, cx bg)
   double radius, theta;
   /* get the proper polar form of the complex number */
   radius =  sqrt(ag.re*ag.re + ag.im*ag.im);
-  theta = atan2f(ag.im,ag.re);
+  theta = atan2(ag.im,ag.re);
   /* mesp gives R^(c+di) */
-  mesp.re = powf(radius,bg.re)*cos(bg.im*logf(radius));
-  mesp.im = powf(radius,bg.re)*sin(bg.im*logf(radius));
+  mesp.re = pow(radius,bg.re)*cos(bg.im*log(radius));
+  mesp.im = pow(radius,bg.re)*sin(bg.im*log(radius));
   /* frim gives e^(i theta (c+di)) */
   /* now since we already have the machinery
      for performing complex exponentiation (just exp), we
