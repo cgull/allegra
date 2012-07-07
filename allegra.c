@@ -10,7 +10,7 @@ typedef struct{
   double im;
 } complex;
 
-complex add(complex m, complex n)
+static inline complex add(complex m, complex n)
 {
   complex out;
   out.re = m.re + n.re;
@@ -18,7 +18,7 @@ complex add(complex m, complex n)
   return out;
 }
 
-complex cdiff(complex m, complex n)
+static inline complex cdiff(complex m, complex n)
 {
   complex out;
   out.re = m.re - n.re;
@@ -26,7 +26,7 @@ complex cdiff(complex m, complex n)
   return out;
 }
 
-complex mult(complex m, complex n)
+static inline complex mult(complex m, complex n)
 {
   complex out;
   out.re = m.re*n.re - m.im *n.im;
@@ -34,7 +34,7 @@ complex mult(complex m, complex n)
   return out;
 }
 
-complex rmult(double u, complex m)
+static inline complex rmult(double u, complex m)
 {
   complex out;
   out.re = u*m.re;
@@ -42,7 +42,7 @@ complex rmult(double u, complex m)
   return out;
 }
 
-complex jcon(complex m)
+static inline complex jcon(complex m)
 {
   complex out;
   out.re = m.re;
@@ -50,7 +50,7 @@ complex jcon(complex m)
   return out;
 }
 
-double norm2(complex m)
+static inline double norm2(complex m)
 {
   double out;
   out = (m.re*m.re + m.im*m.im);
@@ -58,14 +58,14 @@ double norm2(complex m)
 }
 
 
-complex recip(complex m)
+static inline complex recip(complex m)
 {
   complex out;
   out = rmult(1/norm2(m),jcon(m));
   return out;
 }
 
-complex cdiv(complex m, complex v)
+static inline complex cdiv(complex m, complex v)
 {
   complex out;
   out = mult(m,recip(v));
@@ -90,7 +90,7 @@ complex cdiv(complex m, complex v)
    to make no difference to the phase of the complex number being
    plotted */
 
-complex expc(complex m)
+static inline complex expc(complex m)
 {
   complex out;
   complex mesp, frim;
@@ -102,7 +102,7 @@ complex expc(complex m)
 }
 
 
-complex powc(complex ag, complex bg)
+static inline complex powc(complex ag, complex bg)
 {  
   complex out;
   complex mesp, frim;
