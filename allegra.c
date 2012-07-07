@@ -1,4 +1,4 @@
-/* compile with cc -g O3 -Wall -Wextra -ffast-math -std=c99 */
+/* compile with cc -g -O3 -Wall -Wextra -ffast-math -std=c99 */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -259,11 +259,6 @@ static cx newt(cx z, cx q)
   return current;
 }
 
-#define MAXDISPLAY 2048
-static color display[MAXDISPLAY][MAXDISPLAY];
-static const int maxdisplay = MAXDISPLAY;
-#undef MAXDISPLAY
-
 int main(int argc, char *argv[])
 {
   if (argc != 2) {
@@ -272,28 +267,13 @@ int main(int argc, char *argv[])
   }
 
   int displaysize = atoi(argv[1]);
-  if (displaysize % 2 || displaysize < 2 || displaysize > maxdisplay) {
-    fprintf(stderr, "%s: displaysize needs to be even and between 2 and %d\n",
-	    argv[0], maxdisplay);
+  if (displaysize % 2 || displaysize < 2) {
+    fprintf(stderr, "%s: displaysize needs to be even and greater than 0\n",
+	    argv[0]);
     exit(1);
   }
 
   int halfdisplay = displaysize / 2;
-
-#if 0
-  int i,j;
-  color gray;
-  gray.red = 128;
-  gray.green = 128;
-  gray.blue = 128;
-  for(i=0;i<displaysize;i++)
-    {
-      for(j=0;j<displaysize;j++)
-	{
-	  display[i][j] = gray;
-	}
-    }
-#endif
 
   cx testq; 
   testq.re = 0.001;
@@ -308,6 +288,7 @@ int main(int argc, char *argv[])
   int a, b;
   cx z;
 
+  printf("P3\n%d %d\n255\n", displaysize, displaysize);
   for(a=0;a<displaysize;a++)
     {
       for(b=0;b<displaysize;b++)
@@ -315,16 +296,9 @@ int main(int argc, char *argv[])
 	  z.im = 4.3*((double) (a-halfdisplay))/(double)halfdisplay;
 	  z.re = 4.3*((double) (b-halfdisplay))/(double)halfdisplay;
 	  /* I'm going to keep testq constant now */
-	  display[a][b] = argcolor(newt(z,testq));
-	}
-    }
-
-  printf("P3\n%d %d\n255\n", displaysize, displaysize);
-  for(a=0;a<displaysize;a++)
-    {
-      for(b=0;b<displaysize;b++)
-	{
-	  printf("%d %d %d\n", display[a][b].red, display[a][b].green, display[a][b].blue);
+	  // display[a][b] = argcolor(newt(z,testq));
+	  color c = argcolor(newt(z, testq));
+	  printf("%d %d %d\n", c.red, c.green, c.blue);
 	}
     }
 
