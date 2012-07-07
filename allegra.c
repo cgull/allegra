@@ -134,48 +134,48 @@ typedef struct
 
 color hsv2rgb(double hue, double saturation, double value)
 {
-   double qred;
-   double qgreen;
-   double qblue;
-   int xred=0;
-   int xgreen=0; 
-   int xblue=0;
-   int lexen;
-   double nexel;
-   double M;
-   double N;
-   double K;
-   color out;
+  double qred;
+  double qgreen;
+  double qblue;
+  int xred=0;
+  int xgreen=0; 
+  int xblue=0;
+  int lexen;
+  double nexel;
+  double M;
+  double N;
+  double K;
+  color out;
   if(saturation == 0)
-  {
-    // achromatic case
-    xred = (int) (255.0 * value);
-    xgreen = (int) (255.0 * value);
-    xblue = (int) (255.0 * value);
-  }
-  else
-  {
-    if(hue >= 1.0){
-       hue = 0.0;
-    }
-    else
     {
-      hue = hue * 6;
+      // achromatic case
+      xred = (int) (255.0 * value);
+      xgreen = (int) (255.0 * value);
+      xblue = (int) (255.0 * value);
     }
+  else
+    {
+      if(hue >= 1.0){
+	hue = 0.0;
+      }
+      else
+	{
+	  hue = hue * 6;
+	}
   
-  lexen = ((int) (hue));
-  nexel = hue - ((double) (lexen));
+      lexen = ((int) (hue));
+      nexel = hue - ((double) (lexen));
  
-   M = value * (1 - saturation);
-   N = value * (1 - saturation * nexel);
-   K = value * (1-saturation*(1-nexel));    
-  if(lexen==0) { xred = (int) (255.0*value); xgreen = (int) (255.0*K); xblue = (int) (255.0*M);} 
-  if(lexen==1) { xred = (int) (255.0*N); xgreen = (int) (255.0*value); xblue = (int) (255.0*M);} 
-  if(lexen==2) { xred = (int) (255.0*M); xgreen = (int) (255.0*value); xblue = (int) (255.0*K);} 
-  if(lexen==3) { xred = (int) (255.0*M); xgreen = (int) (255.0*N); xblue = (int) (255.0*value);} 
-  if(lexen==4) { xred = (int) (255.0*K); xgreen = (int) (255.0*M); xblue = (int) (255.0*value);} 
-  if(lexen==5) { xred = (int) (255.0*value); xgreen = (int) (255.0*M); xblue = (int) (255.0*N);}
-  }
+      M = value * (1 - saturation);
+      N = value * (1 - saturation * nexel);
+      K = value * (1-saturation*(1-nexel));    
+      if(lexen==0) { xred = (int) (255.0*value); xgreen = (int) (255.0*K); xblue = (int) (255.0*M);} 
+      if(lexen==1) { xred = (int) (255.0*N); xgreen = (int) (255.0*value); xblue = (int) (255.0*M);} 
+      if(lexen==2) { xred = (int) (255.0*M); xgreen = (int) (255.0*value); xblue = (int) (255.0*K);} 
+      if(lexen==3) { xred = (int) (255.0*M); xgreen = (int) (255.0*N); xblue = (int) (255.0*value);} 
+      if(lexen==4) { xred = (int) (255.0*K); xgreen = (int) (255.0*M); xblue = (int) (255.0*value);} 
+      if(lexen==5) { xred = (int) (255.0*value); xgreen = (int) (255.0*M); xblue = (int) (255.0*N);}
+    }
   out.red = xred;
   out.green = xgreen;
   out.blue = xblue;
@@ -194,36 +194,8 @@ color argcolor(complex q)
 /*   return hsv2rgb(atan2(q.im,q.re)/pi ,1.0,1.0); */
 /* } */
 
-color display[512][512];
-int i,j;
-
-int main(int argc, char *argv[])
-{
-
-  color gray;
-  gray.red = 128;
-  gray.green = 128;
-  gray.blue = 128;
-  for(i=0;i<512;i++)
-    {
-      for(j=0;j<512;j++)
-	{
-	  display[i][j] = gray;
-	}
-    }
-
-
-complex origin;
-complex unity;
-complex ai;
-ai.re = 0.0;
-ai.im = 1.0;
-origin.re = 0.0;
-origin.im = 0.0;
-unity.re = 1.0;
-unity.im = 0.0;
-
-
+static const complex origin = { 0.0, 0.0 };
+static const complex ai = { 0.0, 1.0 };
 
 complex jtheta3(complex z, complex q)
 {
@@ -276,66 +248,79 @@ complex pjtheta3(complex z, complex q)
   return sum;
 }
 
-
-
-
-
-
-
- int a, b;
- complex testz;
- complex z;
- testz.re = 0.212;
- testz.im= 0.110;
- complex testq; 
- testq.re = 0.001;
- testq.im = -.3019;
- /* here's the actual newton method def -- I"m going to be using
-    thirty iterations at the moment, because that seems to get fine
-    results with mpmath */
+/* here's the actual newton method def -- I"m going to be using
+   thirty iterations at the moment, because that seems to get fine
+   results with mpmath */
  
 complex newt(complex z, complex q)
- {
-   int ix; 
-   /* these don't really need to be defined as global variables, so
-      I'll define them locally */
-   complex current, next;
-   current = z;
-   for(ix = 0; ix < 30 ; ix++)
-     {
-       next = cdiff(current,cdiv(jtheta3(current,q),pjtheta3(current,q)));
-       current = next;
-     }
-   return current;
- }
-       
+{
+  int ix; 
+  /* these don't really need to be defined as global variables, so
+     I'll define them locally */
+  complex current, next;
+  current = z;
+  for(ix = 0; ix < 30 ; ix++)
+    {
+      next = cdiff(current,cdiv(jtheta3(current,q),pjtheta3(current,q)));
+      current = next;
+    }
+  return current;
+}
+
+int main(int argc, char *argv[])
+{
+
+  static const int displaysize = 40;
 
 
-
- /* printf("theta3(testz,testq)= %.20f %.20f i\n", jtheta3(testz,testq).re, jtheta3(testz,testq).im); */
-
- for(a=0;a<512;a++)
-   {
-     for(b=0;b<512;b++)
-       {
-	 z.im = 4.3*((double) (a-256))/256.0;
-	 z.re = 4.3*((double) (b-256))/256.0;
-	 /* I'm going to keep testq constant now */
-	 display[a][b] = argcolor(newt(z,testq));
-       }
-   }
-
- printf("P3\n512 512\n255\n");
- for(a=0;a<512;a++)
-   {
-     for(b=0;b<512;b++)
-       {
-	 printf("%d %d %d\n", display[a][b].red, display[a][b].green, display[a][b].blue);
-       }
-   }
+  color display[displaysize][displaysize];
+  int i,j;
 
 
+  color gray;
+  gray.red = 128;
+  gray.green = 128;
+  gray.blue = 128;
+  for(i=0;i<displaysize;i++)
+    {
+      for(j=0;j<displaysize;j++)
+	{
+	  display[i][j] = gray;
+	}
+    }
 
+  complex testq; 
+  testq.re = 0.001;
+  testq.im = -.3019;
+#if 0
+  complex testz;
+  testz.re = 0.212;
+  testz.im= 0.110;
+  printf("theta3(testz,testq)= %.20f %.20f i\n", jtheta3(testz,testq).re, jtheta3(testz,testq).im);
+#endif
+
+  int a, b;
+  complex z;
+
+  for(a=0;a<displaysize;a++)
+    {
+      for(b=0;b<displaysize;b++)
+	{
+	  z.im = 4.3*((double) (a-256))/256.0;
+	  z.re = 4.3*((double) (b-256))/256.0;
+	  /* I'm going to keep testq constant now */
+	  display[a][b] = argcolor(newt(z,testq));
+	}
+    }
+
+  printf("P3\n%d %d\n255\n", displaysize, displaysize);
+  for(a=0;a<displaysize;a++)
+    {
+      for(b=0;b<displaysize;b++)
+	{
+	  printf("%d %d %d\n", display[a][b].red, display[a][b].green, display[a][b].blue);
+	}
+    }
 
   return 0;
 }
