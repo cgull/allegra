@@ -1,3 +1,5 @@
+/* compile with cc -g O3 -Wall -Wextra -ffast-math -std=c99 */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -120,10 +122,10 @@ static cx powc(cx ag, cx bg)
   double radius, theta;
   /* get the proper polar form of the complex number */
   radius =  sqrt(ag.re*ag.re + ag.im*ag.im);
-  theta = atan2(ag.im,ag.re);
+  theta = atan2f(ag.im,ag.re);
   /* mesp gives R^(c+di) */
-  mesp.re = pow(radius,bg.re)*cos(bg.im*log(radius));
-  mesp.im = pow(radius,bg.re)*sin(bg.im*log(radius));
+  mesp.re = powf(radius,bg.re)*cos(bg.im*logf(radius));
+  mesp.im = powf(radius,bg.re)*sin(bg.im*logf(radius));
   /* frim gives e^(i theta (c+di)) */
   /* now since we already have the machinery
      for performing complex exponentiation (just exp), we
@@ -278,10 +280,8 @@ int main(int argc, char *argv[])
 
   int halfdisplay = displaysize / 2;
 
-
+#if 0
   int i,j;
-
-
   color gray;
   gray.red = 128;
   gray.green = 128;
@@ -293,6 +293,7 @@ int main(int argc, char *argv[])
 	  display[i][j] = gray;
 	}
     }
+#endif
 
   cx testq; 
   testq.re = 0.001;
