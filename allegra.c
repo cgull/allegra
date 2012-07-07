@@ -93,8 +93,6 @@ complex cdiv(complex m, complex v)
 complex expc(complex m)
 {
   complex out;
-  complex mesp, frim;
-  double radius, theta;
 
   out.re = exp(m.re) * cos(m.im);
   out.im = exp(m.re) * sin(m.im);
@@ -125,8 +123,7 @@ complex powc(complex ag, complex bg)
 }
 
 
-typedef struct
-{
+typedef struct  {
   int red;
   int green;
   int blue;
@@ -134,9 +131,6 @@ typedef struct
 
 color hsv2rgb(double hue, double saturation, double value)
 {
-  double qred;
-  double qgreen;
-  double qblue;
   int xred=0;
   int xgreen=0; 
   int xblue=0;
@@ -203,12 +197,13 @@ static const complex ai = { 0.0, 1.0 };
  
 complex newt(complex z, complex q)
 {
-  int ix; 
   /* these don't really need to be defined as global variables, so
      I'll define them locally */
-  complex next;
-  next = z;
+  complex current;
+  current = z;
 
+  /* precalculate some stuff.  blorf could be hoisted out of newt() 
+     but it's already 2 inner loops up from where it was */
   complex qpart[80];
   complex blorf[80];
   int n;
@@ -220,33 +215,49 @@ complex newt(complex z, complex q)
     blorf[n+40] = rmult(2*n,ai);
   }
 
+  int ix; 
   for(ix = 0; ix < 30 ; ix++)
     {
-      complex zpart;
-      complex sum;
-      complex psum;
-      sum = psum = origin;
-      zpart = expc(next);
+      const complex zpart = expc(current);
+      complex sum = origin;
+      complex psum = origin;
       int n;
       for(n=-40;n<40;n++)
 	{
-	  zpart = powc(zpart, blorf[n+40]);
-	  sum = add(sum,mult(qpart[n+40],zpart));
-	  zpart = mult(blorf[n+40],zpart);
-	  psum = add(psum,mult(qpart[n+40],zpart));
+	  /* calculate jtheta3 */
+	  complex zpart_n = powc(zpart, blorf[n+40]);
+	  sum = add(sum,mult(qpart[n+40],zpart_n));
+	  /* calculate pjtheta3 from that */
+	  zpart_n = mult(blorf[n+40],zpart_n);
+	  psum = add(psum,mult(qpart[n+40],zpart_n));
 	}
-      next = cdiff(next,cdiv(sum, psum));
+      current = cdiff(current,cdiv(sum, psum));
     }
-  return next;
+  return current;
 }
+
+#define MAXDISPLAY 2048
+static color display[MAXDISPLAY][MAXDISPLAY];
+static const int maxdisplay = MAXDISPLAY;
+#undef MAXDISPLAY
 
 int main(int argc, char *argv[])
 {
+  if (argc != 2) {
+    fprintf(stderr, "%s displaysize\n", argv[0]);
+    exit(1);
+  }
 
-  static const int displaysize = 512;
+  int displaysize = atoi(argv[1]);
+  if (displaysize % 2 || displaysize < 2 || displaysize > maxdisplay) {
+    fprintf(stderr, "%s: displaysize needs to be even and between 2 and %d\n",
+	    argv[0], maxdisplay);
+    exit(1);
+  }
+
+  int halfdisplay = displaysize / 2;
 
 
-  color display[displaysize][displaysize];
   int i,j;
 
 
@@ -279,8 +290,8 @@ int main(int argc, char *argv[])
     {
       for(b=0;b<displaysize;b++)
 	{
-	  z.im = 4.3*((double) (a-256))/256.0;
-	  z.re = 4.3*((double) (b-256))/256.0;
+	  z.im = 4.3*((double) (a-halfdisplay))/(double)halfdisplay;
+	  z.re = 4.3*((double) (b-halfdisplay))/(double)halfdisplay;
 	  /* I'm going to keep testq constant now */
 	  display[a][b] = argcolor(newt(z,testq));
 	}
