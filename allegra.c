@@ -1,56 +1,58 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <complex.h>
 
 
 /* complex number typedefs and assorted effluvia */
 
-typedef struct{
+typedef struct
+{
   double re;
   double im;
-} complex;
+} cx;
 
-complex add(complex m, complex n)
+static cx add(cx m, cx n)
 {
-  complex out;
+  cx out;
   out.re = m.re + n.re;
   out.im = m.im + n.im;
   return out;
 }
 
-complex cdiff(complex m, complex n)
+static cx cdiff(cx m, cx n)
 {
-  complex out;
+  cx out;
   out.re = m.re - n.re;
   out.im = m.im - n.im;
   return out;
 }
 
-complex mult(complex m, complex n)
+static cx mult(cx m, cx n)
 {
-  complex out;
+  cx out;
   out.re = m.re*n.re - m.im *n.im;
   out.im = m.im*n.re + m.re * n.im;
   return out;
 }
 
-complex rmult(double u, complex m)
+static cx rmult(double u, cx m)
 {
-  complex out;
+  cx out;
   out.re = u*m.re;
   out.im = u*m.im;
   return out;
 }
 
-complex jcon(complex m)
+static cx jcon(cx m)
 {
-  complex out;
+  cx out;
   out.re = m.re;
   out.im = -m.im;
   return out;
 }
 
-double norm2(complex m)
+static double norm2(cx m)
 {
   double out;
   out = (m.re*m.re + m.im*m.im);
@@ -58,16 +60,16 @@ double norm2(complex m)
 }
 
 
-complex recip(complex m)
+static cx recip(cx m)
 {
-  complex out;
+  cx out;
   out = rmult(1/norm2(m),jcon(m));
   return out;
 }
 
-complex cdiv(complex m, complex v)
+static cx cdiv(cx m, cx v)
 {
-  complex out;
+  cx out;
   out = mult(m,recip(v));
   return out;
 }
@@ -90,20 +92,31 @@ complex cdiv(complex m, complex v)
    to make no difference to the phase of the complex number being
    plotted */
 
-complex expc(complex m)
+#if 0
+static cx expc(cx m)
 {
-  complex out;
+  cx out;
 
   out.re = exp(m.re) * cos(m.im);
   out.im = exp(m.re) * sin(m.im);
   return out;
 }
+#else
+static cx expc(cx m)
+{
+  double complex retval = cexp(m.re + m.im * I);
+  cx out;
 
+  out.re = creal(retval); out.im = cimag(retval);
+  return out;
+}
+#endif
 
-complex powc(complex ag, complex bg)
+#if 1
+static cx powc(cx ag, cx bg)
 {  
-  complex out;
-  complex mesp, frim;
+  cx out;
+  cx mesp, frim;
   double radius, theta;
   /* get the proper polar form of the complex number */
   radius =  sqrt(ag.re*ag.re + ag.im*ag.im);
@@ -121,7 +134,15 @@ complex powc(complex ag, complex bg)
   out = mult(mesp,frim);
   return out;
 }
-
+#else
+static cx powc(cx ag, cx bg)
+{
+  cx out;
+  double complex retval = cpow(ag.re + ag.im + I, bg.re + bg.im + I);
+  out.re = creal(retval); out.im = cimag(retval);
+  return out;
+}
+#endif
 
 typedef struct  {
   int red;
@@ -129,7 +150,7 @@ typedef struct  {
   int blue;
 } color;
 
-color hsv2rgb(double hue, double saturation, double value)
+static color hsv2rgb(double hue, double saturation, double value)
 {
   int xred=0;
   int xgreen=0; 
@@ -176,39 +197,39 @@ color hsv2rgb(double hue, double saturation, double value)
   return out;
 }
 
-double  pi = 3.1415926535;
+static double  pi = 3.1415926535;
 
-color argcolor(complex q)
+static color argcolor(cx q)
 {
   return hsv2rgb((atan(q.im/q.re)+pi/2.0)/pi ,1.0,1.0);
 }
 
-/* color argcolor(complex q) */
+/* color argcolor(cx q) */
 /* { */
 /*   return hsv2rgb(atan2(q.im,q.re)/pi ,1.0,1.0); */
 /* } */
 
-static const complex origin = { 0.0, 0.0 };
-static const complex ai = { 0.0, 1.0 };
+static const cx origin = { 0.0, 0.0 };
+static const cx ai = { 0.0, 1.0 };
 
 /* here's the actual newton method def -- I"m going to be using
    thirty iterations at the moment, because that seems to get fine
    results with mpmath */
  
-complex newt(complex z, complex q)
+static cx newt(cx z, cx q)
 {
   /* these don't really need to be defined as global variables, so
      I'll define them locally */
-  complex current;
+  cx current;
   current = z;
 
   /* precalculate some stuff.  blorf could be hoisted out of newt() 
      but it's already 2 inner loops up from where it was */
-  complex qpart[80];
-  complex blorf[80];
+  cx qpart[80];
+  cx blorf[80];
   int n;
   for (n = -40; n < 40; n++) {
-    complex ponent;
+    cx ponent;
     ponent.re = n*n;
     ponent.im = 0.0;
     qpart[n+40] = powc(q,ponent);
@@ -218,14 +239,14 @@ complex newt(complex z, complex q)
   int ix; 
   for(ix = 0; ix < 30 ; ix++)
     {
-      const complex zpart = expc(current);
-      complex sum = origin;
-      complex psum = origin;
+      const cx zpart = expc(current);
+      cx sum = origin;
+      cx psum = origin;
       int n;
       for(n=-40;n<40;n++)
 	{
 	  /* calculate jtheta3 */
-	  complex zpart_n = powc(zpart, blorf[n+40]);
+	  cx zpart_n = powc(zpart, blorf[n+40]);
 	  sum = add(sum,mult(qpart[n+40],zpart_n));
 	  /* calculate pjtheta3 from that */
 	  zpart_n = mult(blorf[n+40],zpart_n);
@@ -273,18 +294,18 @@ int main(int argc, char *argv[])
 	}
     }
 
-  complex testq; 
+  cx testq; 
   testq.re = 0.001;
   testq.im = -.3019;
 #if 0
-  complex testz;
+  cx testz;
   testz.re = 0.212;
   testz.im= 0.110;
   printf("theta3(testz,testq)= %.20f %.20f i\n", jtheta3(testz,testq).re, jtheta3(testz,testq).im);
 #endif
 
   int a, b;
-  complex z;
+  cx z;
 
   for(a=0;a<displaysize;a++)
     {
