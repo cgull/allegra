@@ -1,10 +1,14 @@
-/* compile with cc -g -O3 -Wall -Wextra -ffast-math -std=c99 */
+/* compile with cc -g -O3 -Wall -Wextra -ffast-math -std=c99 allegra.c -lm -o allegra */
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include <complex.h>
 
+#undef CALLCOUNT
+#define RANGE 40
+#define ITERS 30
 
 /* complex number typedefs and assorted effluvia */
 
@@ -94,13 +98,31 @@ static cx cdiv(cx m, cx v)
    to make no difference to the phase of the complex number being
    plotted */
 
-#if 0
+#ifdef CALLCOUNT
+static int exp_count, exp_re_count, exp_im_count;
+static int pow_count, pow_a_re_count, pow_a_im_count, pow_b_re_count, pow_b_im_count;
+#endif
+
+
+#if 1
+/* m.im == 0 is a common case for this function, optimize for it. */
 static cx expc(cx m)
 {
+#ifdef CALLCOUNT
+  exp_count++;
+  if (m.re == 0) exp_re_count++;
+  if (m.im == 0) exp_im_count++;
+#endif
+
   cx out;
 
-  out.re = exp(m.re) * cos(m.im);
-  out.im = exp(m.re) * sin(m.im);
+  if (m.im == 0) {
+    out.re = exp(m.re);
+    out.im = 0;
+  } else {
+    out.re = exp(m.re) * cos(m.im);
+    out.im = exp(m.re) * sin(m.im);
+  }
   return out;
 }
 #else
@@ -115,8 +137,18 @@ static cx expc(cx m)
 #endif
 
 #if 1
+/* bg.re == 0 is a common case for this function, but optimizing for that doesn't
+   help significantly. */
 static cx powc(cx ag, cx bg)
 {  
+#ifdef CALLCOUNT
+  pow_count++;
+  if (ag.re == 0) pow_a_re_count++;
+  if (ag.im == 0) pow_a_im_count++;
+  if (bg.re == 0) pow_b_re_count++;
+  if (bg.im == 0) pow_b_im_count++;
+#endif
+
   cx out;
   cx mesp, frim;
   double radius, theta;
@@ -218,6 +250,13 @@ static const cx ai = { 0.0, 1.0 };
    thirty iterations at the moment, because that seems to get fine
    results with mpmath */
  
+#ifdef CALLCOUNT
+static int newtzeros = 0;
+static int newtnonzeros = 0;
+static int newtfullcount = 0;
+static int newtlatestexit = 0;
+#endif
+
 static cx newt(cx z, cx q)
 {
   /* these don't really need to be defined as global variables, so
@@ -227,34 +266,60 @@ static cx newt(cx z, cx q)
 
   /* precalculate some stuff.  blorf could be hoisted out of newt() 
      but it's already 2 inner loops up from where it was */
-  cx qpart[80];
-  cx blorf[80];
+  cx qpart[2 * RANGE];
+  cx blorf[2 * RANGE];
   int n;
-  for (n = -40; n < 40; n++) {
+  for (n = -RANGE; n < RANGE; n++) {
     cx ponent;
     ponent.re = n*n;
     ponent.im = 0.0;
-    qpart[n+40] = powc(q,ponent);
-    blorf[n+40] = rmult(2*n,ai);
+    qpart[n+RANGE] = powc(q,ponent);
+    blorf[n+RANGE] = rmult(2*n,ai);
   }
 
   int ix; 
-  for(ix = 0; ix < 30 ; ix++)
+#ifdef CALLCOUNT
+  int zerocount = 0;
+#endif
+  for(ix = 0; ix < ITERS; ix++)
     {
       const cx zpart = expc(current);
       cx sum = origin;
       cx psum = origin;
       int n;
-      for(n=-40;n<40;n++)
+      for(n=-RANGE;n<RANGE;n++)
 	{
 	  /* calculate jtheta3 */
-	  cx zpart_n = powc(zpart, blorf[n+40]);
-	  sum = add(sum,mult(qpart[n+40],zpart_n));
+	  cx zpart_n = powc(zpart, blorf[n+RANGE]);
+	  sum = add(sum,mult(qpart[n+RANGE],zpart_n));
 	  /* calculate pjtheta3 from that */
-	  zpart_n = mult(blorf[n+40],zpart_n);
-	  psum = add(psum,mult(qpart[n+40],zpart_n));
+	  zpart_n = mult(blorf[n+RANGE],zpart_n);
+	  psum = add(psum,mult(qpart[n+RANGE],zpart_n));
 	}
-      current = cdiff(current,cdiv(sum, psum));
+      cx next = cdiff(current,cdiv(sum, psum));
+      // If next has NANs, these comparisons will be true, and we'll
+      // fall out here, which is what we want anyway
+      if (current.re == next.re && current.im == next.im) {
+#ifdef CALLCOUNT
+	if (ix > newtlatestexit) newtlatestexit = ix;
+	if (!zerocount) {
+	  // fprintf(stderr, "iter %d\n", ix);
+	  newtzeros++;
+	  zerocount++;
+	}
+	if (memcmp(&current, &next, sizeof current)) {
+	  fprintf(stderr, "%a %a %a %a\n", current.re, current.im, next.re, next.im);
+	}
+#endif
+	// next may have NANs, use it instead of current, to be similar to old code
+	current = next;
+	break;
+      }
+#ifdef CALLCOUNT
+      else if (zerocount) newtnonzeros++;
+      if (ix == ITERS) newtfullcount++;
+#endif
+      current = next;
     }
   return current;
 }
@@ -302,5 +367,12 @@ int main(int argc, char *argv[])
 	}
     }
 
+#ifdef CALLCOUNT
+  fprintf(stderr, "exp %d re %d im %d\n"
+	  "pow %d a re %d a im %d b re %d b im %d\n",
+	  exp_count, exp_re_count, exp_im_count,
+	  pow_count, pow_a_re_count, pow_a_im_count, pow_b_re_count, pow_b_im_count);
+  fprintf(stderr, "full iter count %d zeros %d following nonzeros %d latest exit %d\n", newtfullcount, newtzeros, newtnonzeros, newtlatestexit);
+#endif
   return 0;
 }
