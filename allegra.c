@@ -18,6 +18,13 @@ typedef struct
   double im;
 } cx;
 
+static const cx origin = { 0.0, 0.0 };
+static const cx ai = { 0.0, 1.0 };
+static const cx minusi = {0.0, -1.0};
+static const cx rone = {1.0, 0.0};
+static const cx rtwo = {2.0, 0.0};
+
+#if 1
 static cx add(cx m, cx n)
 {
   cx out;
@@ -79,7 +86,47 @@ static cx cdiv(cx m, cx v)
   out = mult(m,recip(v));
   return out;
 }
+#else
+static cx add(cx m, cx n)
+{
+  complex o = (m.re + m.im * I) + (n.re + n.im * I);
+  cx out;
+  out.re = creal(o); out.im = cimag(o);
+  return out;
+}
 
+static cx cdiff(cx m, cx n)
+{
+  complex o = (m.re + m.im * I) - (n.re + n.im * I);
+  cx out;
+  out.re = creal(o); out.im = cimag(o);
+  return out;
+}
+
+static cx mult(cx m, cx n)
+{
+  complex o = (m.re + m.im * I) * (n.re + n.im * I);
+  cx out;
+  out.re = creal(o); out.im = cimag(o);
+  return out;
+}
+
+static cx rmult(double u, cx m)
+{
+  complex o = (m.re + m.im * I) * u;
+  cx out;
+  out.re = creal(o); out.im = cimag(o);
+  return out;
+}
+
+static cx cdiv(cx m, cx n)
+{
+  complex o = (m.re + m.im * I) / (n.re + n.im * I);
+  cx out;
+  out.re = creal(o); out.im = cimag(o);
+  return out;
+}
+#endif
 
 
 /* we need to define a raw exponential -- that is something
@@ -104,7 +151,7 @@ static int pow_count, pow_a_re_count, pow_a_im_count, pow_b_re_count, pow_b_im_c
 #endif
 
 
-#if 1
+#if 0
 /* m.im == 0 is a common case for this function, optimize for it. */
 static cx expc(cx m)
 {
@@ -128,7 +175,7 @@ static cx expc(cx m)
 #else
 static cx expc(cx m)
 {
-  double complex retval = cexp(m.re + m.im * I);
+  complex retval = cexp(m.re + m.im * I);
   cx out;
 
   out.re = creal(retval); out.im = cimag(retval);
@@ -136,7 +183,7 @@ static cx expc(cx m)
 }
 #endif
 
-#if 1
+#if 0
 /* bg.re == 0 is a common case for this function, but optimizing for that doesn't
    help significantly. */
 static cx powc(cx ag, cx bg)
@@ -172,7 +219,7 @@ static cx powc(cx ag, cx bg)
 static cx powc(cx ag, cx bg)
 {
   cx out;
-  double complex retval = cpow(ag.re + ag.im + I, bg.re + bg.im + I);
+  complex retval = cpow(ag.re + ag.im * I, bg.re + bg.im * I);
   out.re = creal(retval); out.im = cimag(retval);
   return out;
 }
@@ -236,15 +283,9 @@ static double  pi = 3.1415926535;
 static color argcolor(cx q)
 {
   return hsv2rgb((atan(q.im/q.re)+pi/2.0)/pi ,1.0,1.0);
+  //return hsv2rgb(atan2(q.im,q.re)/pi ,1.0,1.0);
+  //return hsv2rgb((atan2(q.im,q.re)/pi+1)/2.0 ,1.0,1.0);
 }
-
-/* color argcolor(cx q) */
-/* { */
-/*   return hsv2rgb(atan2(q.im,q.re)/pi ,1.0,1.0); */
-/* } */
-
-static const cx origin = { 0.0, 0.0 };
-static const cx ai = { 0.0, 1.0 };
 
 /* here's the actual newton method def -- I"m going to be using
    thirty iterations at the moment, because that seems to get fine
@@ -266,10 +307,10 @@ static cx newt(cx z, cx q)
 
   /* precalculate some stuff.  blorf could be hoisted out of newt() 
      but it's already 2 inner loops up from where it was */
-  cx qpart[2 * RANGE];
-  cx blorf[2 * RANGE];
+  cx qpart[2 * RANGE + 1];
+  cx blorf[2 * RANGE + 1];
   int n;
-  for (n = -RANGE; n < RANGE; n++) {
+  for (n = -RANGE; n <= RANGE; n++) {
     cx ponent;
     ponent.re = n*n;
     ponent.im = 0.0;
@@ -287,8 +328,11 @@ static cx newt(cx z, cx q)
       cx sum = origin;
       cx psum = origin;
       int n;
-      for(n=-RANGE;n<RANGE;n++)
+      for(n=-RANGE;n<=RANGE;n++)
 	{
+	  /* if qpart is 0, none of the rest of this matters */
+	  /* XXX this could be moved up to the precalculation loop to control the iterations we do here */
+	  if (qpart[n+RANGE].re == 0 && qpart[n+RANGE].im == 0) continue;
 	  /* calculate jtheta3 */
 	  cx zpart_n = powc(zpart, blorf[n+RANGE]);
 	  sum = add(sum,mult(qpart[n+RANGE],zpart_n));
@@ -297,6 +341,7 @@ static cx newt(cx z, cx q)
 	  psum = add(psum,mult(qpart[n+RANGE],zpart_n));
 	}
       cx next = cdiff(current,cdiv(sum, psum));
+      // If the iteration has converged, bail.
       // If next has NANs, these comparisons will be true, and we'll
       // fall out here, which is what we want anyway
       if (current.re == next.re && current.im == next.im) {
@@ -326,8 +371,8 @@ static cx newt(cx z, cx q)
 
 int main(int argc, char *argv[])
 {
-  if (argc != 2) {
-    fprintf(stderr, "%s displaysize\n", argv[0]);
+  if (argc != 2 && argc != 3) {
+    fprintf(stderr, "%s displaysize [width]\n", argv[0]);
     exit(1);
   }
 
@@ -337,8 +382,19 @@ int main(int argc, char *argv[])
 	    argv[0]);
     exit(1);
   }
+  int width = displaysize;
+  if (argc == 3) {
+    width = atoi(argv[2]);
+    if (width % 2 || width < 2) {
+      fprintf(stderr, "%s: width needs to be even and greater than 0\n",
+	      argv[0]);
+      exit(1);
+    }
+  }
 
-  int halfdisplay = displaysize / 2;
+
+
+  double halfdisplay = displaysize / 2.0, halfwidth = width / 2.0;
 
   cx testq; 
   testq.re = 0.001;
@@ -353,13 +409,13 @@ int main(int argc, char *argv[])
   int a, b;
   cx z;
 
-  printf("P3\n%d %d\n255\n", displaysize, displaysize);
+  printf("P3\n%d %d\n255\n", width, displaysize);
   for(a=0;a<displaysize;a++)
     {
-      for(b=0;b<displaysize;b++)
+      for(b=0;b<width;b++)
 	{
-	  z.im = 4.3*((double) (a-halfdisplay))/(double)halfdisplay;
-	  z.re = 4.3*((double) (b-halfdisplay))/(double)halfdisplay;
+	  z.im = 4.3 * (a-halfdisplay) / halfdisplay;
+	  z.re = 4.3 * (b-halfwidth) / halfwidth;
 	  /* I'm going to keep testq constant now */
 	  // display[a][b] = argcolor(newt(z,testq));
 	  color c = argcolor(newt(z, testq));
